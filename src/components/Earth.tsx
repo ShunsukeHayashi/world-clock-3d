@@ -1,10 +1,9 @@
 'use client'
 
 import { useRef, useEffect } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { Canvas, useFrame, useThree, useLoader } from '@react-three/fiber'
 import { OrbitControls, Sphere, Stars } from '@react-three/drei'
 import * as THREE from 'three'
-import { OrbitControls as OrbitControlsImpl } from 'three/examples/jsm/controls/OrbitControls'
 
 // 都市の座標データ（緯度経度）
 const CITY_COORDINATES = {
@@ -24,8 +23,14 @@ type GlobeProps = {
 
 function Globe({ selectedTimeZone }: GlobeProps) {
   const earthRef = useRef<THREE.Mesh>(null)
-  const controlsRef = useRef<OrbitControlsImpl>(null)
   const { camera } = useThree()
+
+  // Load textures
+  const [colorMap, normalMap, specularMap] = useLoader(THREE.TextureLoader, [
+    '/earth_texture.jpg',
+    '/earth_bump.jpg',
+    '/earth_specular.jpg'
+  ])
 
   // 緯度経度から3D座標に変換
   const latLngToVector3 = (lat: number, lng: number, radius: number = 1.5) => {
@@ -73,14 +78,14 @@ function Globe({ selectedTimeZone }: GlobeProps) {
     <>
       <Sphere ref={earthRef} args={[1, 64, 64]} position={[0, 0, 0]}>
         <meshStandardMaterial
-          map={new THREE.TextureLoader().load('/earth_texture.jpg')}
-          normalMap={new THREE.TextureLoader().load('/earth_bump.jpg')}
+          map={colorMap}
+          normalMap={normalMap}
+          metalnessMap={specularMap}
           metalness={0.4}
           roughness={0.7}
         />
       </Sphere>
       <OrbitControls
-        ref={controlsRef}
         enableZoom={false}
         enablePan={false}
         autoRotate={false}
@@ -98,7 +103,12 @@ type EarthProps = {
 export default function Earth({ selectedTimeZone = 'Asia/Tokyo' }: EarthProps) {
   return (
     <div className="w-full h-full bg-black/20 rounded-2xl overflow-hidden backdrop-blur-sm">
-      <Canvas camera={{ position: [0, 0, 2.5], fov: 45 }}>
+      <Canvas
+        camera={{ position: [0, 0, 2.5], fov: 45 }}
+        onCreated={({ gl }) => {
+          gl.setClearColor(new THREE.Color('#000000'), 0)
+        }}
+      >
         <ambientLight intensity={0.1} />
         <directionalLight position={[5, 3, 5]} intensity={2} />
         <pointLight position={[-10, -10, -10]} intensity={1} />
